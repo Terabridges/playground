@@ -41,14 +41,26 @@
 
     <main class="views">
       <figure>
-        <figcaption>Camera view <span id="camera-status" class="status"></span></figcaption>
+        <figcaption>
+          <span>Camera view <span id="camera-status" class="status"></span></span>
+          <span class="image-actions">
+            <label class="upload">Use your own image<input id="camera-upload" type="file" accept="image/*" /></label>
+            <button id="camera-restore" hidden>Original image</button>
+          </span>
+        </figcaption>
         <div class="stage">
           <img id="camera-image" src="assets/perspective.jpg" alt="The field seen from a camera at an angle" draggable="false" />
           <canvas id="camera-canvas"></canvas>
         </div>
       </figure>
       <figure>
-        <figcaption>Top-down field <span id="field-status" class="status"></span></figcaption>
+        <figcaption>
+          <span>Top-down field <span id="field-status" class="status"></span></span>
+          <span class="image-actions">
+            <label class="upload">Use your own image<input id="field-upload" type="file" accept="image/*" /></label>
+            <button id="field-restore" hidden>Original image</button>
+          </span>
+        </figcaption>
         <div class="stage">
           <img id="field-image" src="assets/biobuzz_top_down.png" alt="Top-down map of the field" draggable="false" />
           <canvas id="field-canvas"></canvas>
@@ -64,12 +76,9 @@
           <dd id="readout-camera">–</dd>
           <dt>Unit square (u, v)</dt>
           <dd id="readout-unit">–</dd>
-          <dt>Field position</dt>
-          <dd id="readout-field">–</dd>
           <dt>Top-down pixel</dt>
           <dd id="readout-topdown">–</dd>
         </dl>
-        <label class="field-size">Field size (inches per side) <input id="field-size" type="number" min="1" value="144" /></label>
       </div>
       <div class="panel">
         <h2>Camera → top-down matrix</h2>
@@ -87,8 +96,9 @@
         that image's transform backwards (<code>inverseTransform</code>).
       </p>
       <p>
-        Multiplying a unit-square point by the field size gives a position on the field. If a robot camera sees a game piece on
-        the floor at some pixel, the same math gives the game piece's field position.
+        Going from one image to the other is just two steps: into the unit square with the first image's transform, then out
+        with the second image's inverse. <code>quadToQuad</code> combines the two into the single matrix shown above. If a robot
+        camera sees a game piece on the floor at some pixel, that matrix tells you where it is on the field map.
       </p>
       <p>
         <strong>The catch:</strong> this only works for points on the floor plane. Try tracing the top of a tall object in the

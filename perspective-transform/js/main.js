@@ -38,8 +38,6 @@ const colorInput = byId("color");
 const showGridInput = byId("show-grid");
 /** @type {HTMLInputElement} */
 const gridDivisionsInput = byId("grid-divisions");
-/** @type {HTMLInputElement} */
-const fieldSizeInput = byId("field-size");
 const instructions = byId("instructions");
 
 const state = {
@@ -66,9 +64,11 @@ function scene() {
 const events = {
   calibrationChanged(gestureDone) {
     if (gestureDone) {
-      // Once both images have all four corners, switch to drawing automatically.
+      // Once both images have all four corners, switch to drawing automatically,
+      // and go back to calibrating if an image loses its corners (e.g. a new image).
       const allCalibrated = views.every((v) => v.isCalibrated);
       if (allCalibrated && !state.allCalibrated) setMode("draw");
+      if (!allCalibrated && state.mode === "draw") setMode("calibrate");
       state.allCalibrated = allCalibrated;
       save();
     }
@@ -100,6 +100,11 @@ const events = {
 const camera = new CalibratedView(byId("camera-image"), byId("camera-canvas"), scene, events);
 const field = new CalibratedView(byId("field-image"), byId("field-canvas"), scene, events);
 const views = [camera, field];
+/** The prefix each view's elements use in their ids, e.g. "camera-status". @type {[CalibratedView, string][]} */
+const namedViews = [
+  [camera, "camera"],
+  [field, "field"],
+];
 
 // Batch redraws so a burst of pointer events causes at most one redraw per frame.
 let updateQueued = false;
@@ -133,15 +138,11 @@ function setTool(tool) {
 }
 
 function updateStatus() {
-  /** @type {[CalibratedView, string][]} */
-  const statuses = [
-    [camera, "camera-status"],
-    [field, "field-status"],
-  ];
-  for (const [view, id] of statuses) {
-    const el = byId(id);
-    el.textContent = view.isCalibrated ? "Calibrated" : `${view.cornerCount} / 4 corners`;
-    el.classList.toggle("done", view.isCalibrated);
+  for (const [view, name] of namedViews) {
+    const status = byId(`${name}-status`);
+    status.textContent = view.isCalibrated ? "Calibrated" : `${view.cornerCount} / 4 corners`;
+    status.classList.toggle("done", view.isCalibrated);
+    byId(`${name}-restore`).hidden = !view.hasCustomImage;
   }
 
   const next = Math.min(camera.cornerCount, field.cornerCount);
@@ -150,7 +151,8 @@ function updateStatus() {
       ? "Drag any numbered corner to fine-tune it. Switch to <b>Draw</b> when you're done."
       : `Click the four corners of the field floor in <b>both</b> images. Go clockwise and start at the same
          physical corner in each image, so corner 1 is the same spot in both. Next up:
-         <span class="swatch" style="--c:${CORNER_COLORS[next] ?? "transparent"}"></span> corner ${next + 1}.`;
+         <span class="swatch" style="--c:${CORNER_COLORS[next] ?? "transparent"}"></span> corner ${next + 1}.
+         To put a corner exactly on the image's edge, click the corner button (⌜) in that corner of the image.`;
   } else {
     instructions.innerHTML = state.allCalibrated
       ? "Draw on either image. Everything you draw also appears on the other image, in the matching spot."
@@ -161,18 +163,15 @@ function updateStatus() {
 /**
  * @param {Point | null} p
  * @param {number} digits
- * @param {number} [scale]
  */
-function formatPoint(p, digits, scale = 1) {
-  return p ? `${(p.x * scale).toFixed(digits)}, ${(p.y * scale).toFixed(digits)}` : "–";
+function formatPoint(p, digits) {
+  return p ? `${p.x.toFixed(digits)}, ${p.y.toFixed(digits)}` : "–";
 }
 
 function updateReadout() {
   const unit = state.cursor;
-  const fieldSize = Number(fieldSizeInput.value) || 0;
   byId("readout-camera").textContent = formatPoint(unit && camera.fromUnit(unit), 0);
   byId("readout-unit").textContent = formatPoint(unit, 3);
-  byId("readout-field").textContent = formatPoint(unit, 1, fieldSize);
   byId("readout-topdown").textContent = formatPoint(unit && field.fromUnit(unit), 0);
 
   // The single matrix that takes camera pixels straight to top-down pixels.
@@ -189,7 +188,9 @@ function updateReadout() {
 
 function save() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ corners: views.map((v) => v.getCorners()), strokes: state.strokes }));
+    // Uploaded images aren't saved, so neither are the corners clicked on them.
+    const corners = views.map((v) => (v.hasCustomImage ? [] : v.getCorners()));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ corners, strokes: state.strokes }));
   } catch {
     // Storage can be unavailable (private mode, etc.); saving is just a convenience.
   }
@@ -218,6 +219,16 @@ modeButtons.calibrate.addEventListener("click", () => setMode("calibrate"));
 modeButtons.draw.addEventListener("click", () => setMode("draw"));
 toolButtons.pen.addEventListener("click", () => setTool("pen"));
 toolButtons.line.addEventListener("click", () => setTool("line"));
+for (const [view, name] of namedViews) {
+  /** @type {HTMLInputElement} */
+  const upload = byId(`${name}-upload`);
+  upload.addEventListener("change", () => {
+    const file = upload.files?.[0];
+    upload.value = ""; // So picking the same file again still fires "change".
+    if (file) view.loadImage(file);
+  });
+  byId(`${name}-restore`).addEventListener("click", () => view.restoreImage());
+}
 byId("undo").addEventListener("click", undo);
 byId("clear").addEventListener("click", () => {
   state.strokes = [];
@@ -230,7 +241,7 @@ byId("reset").addEventListener("click", () => {
   save();
   setMode("calibrate");
 });
-for (const input of [showGridInput, gridDivisionsInput, fieldSizeInput]) {
+for (const input of [showGridInput, gridDivisionsInput]) {
   input.addEventListener("input", update);
 }
 document.addEventListener("keydown", (e) => {

@@ -32,6 +32,14 @@ import { PerspectiveTransform } from "./perspective.js";
 /** Colors for corners 1-4, so matching corners look the same on both images. */
 export const CORNER_COLORS = ["#e5484d", "#f5a524", "#30a46c", "#3e63dd"];
 
+/** The image's own corners, as fractions of its width and height, for the corner buttons. */
+const IMAGE_CORNERS = [
+  { name: "top-left", x: 0, y: 0 },
+  { name: "top-right", x: 1, y: 0 },
+  { name: "bottom-right", x: 1, y: 1 },
+  { name: "bottom-left", x: 0, y: 1 },
+];
+
 // On-screen sizes, in CSS pixels.
 const HANDLE_RADIUS = 9;
 const HIT_RADIUS = 16;
@@ -49,6 +57,12 @@ export class CalibratedView {
   /** @type {CanvasRenderingContext2D} */ #ctx;
   /** @type {() => Scene} */ #getScene;
   /** @type {ViewEvents} */ #events;
+  /** @type {string} */ #defaultSrc;
+  /** @type {string} */ #defaultAlt;
+  /** Object URL for an uploaded image; it only lives in this tab's memory. @type {string | null} */
+  #uploadUrl = null;
+  /** @type {HTMLButtonElement[]} */
+  #cornerButtons;
 
   /** Calibration corners, in image pixels. @type {Point[]} */
   #corners = [];
@@ -72,6 +86,38 @@ export class CalibratedView {
     this.#ctx = ctx;
     this.#getScene = getScene;
     this.#events = events;
+    this.#defaultSrc = img.src;
+    this.#defaultAlt = img.alt;
+
+    // Buttons that place the next corner exactly on one of the image's own corners.
+    const stage = /** @type {HTMLElement} */ (canvas.parentElement);
+    this.#cornerButtons = IMAGE_CORNERS.map(({ name, x, y }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `corner-button ${name}`;
+      button.title = `Put the next corner exactly in the ${name.replace("-", " ")} corner`;
+      button.setAttribute("aria-label", button.title);
+      button.addEventListener("click", () =>
+        this.#addCorner({ x: x * this.#img.naturalWidth, y: y * this.#img.naturalHeight }),
+      );
+      stage.append(button);
+      return button;
+    });
+
+    // Dropping an image file on the picture works the same as uploading it.
+    stage.addEventListener("dragover", (e) => e.preventDefault());
+    stage.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer?.files[0];
+      if (file?.type.startsWith("image/")) this.loadImage(file);
+    });
+
+    img.addEventListener("load", () => this.#resize());
+    img.addEventListener("error", () => {
+      if (!this.#uploadUrl) return;
+      this.restoreImage();
+      window.alert("That file couldn't be opened as an image.");
+    });
 
     new ResizeObserver(() => this.#resize()).observe(img);
     canvas.addEventListener("pointerdown", (e) => this.#onPointerDown(e));
@@ -83,6 +129,11 @@ export class CalibratedView {
 
   get isCalibrated() {
     return this.#toUnitSquare !== null;
+  }
+
+  /** True while showing an uploaded image instead of the page's own. */
+  get hasCustomImage() {
+    return this.#uploadUrl !== null;
   }
 
   get cornerCount() {
@@ -110,6 +161,34 @@ export class CalibratedView {
   }
 
   /**
+   * Shows an image file from the user's computer. It's never uploaded anywhere
+   * or saved: the browser just reads it from disk for this tab.
+   * @param {File} file
+   */
+  loadImage(file) {
+    this.#showImage(URL.createObjectURL(file), "Your uploaded image");
+  }
+
+  /** Goes back to the page's own image. */
+  restoreImage() {
+    this.#showImage(this.#defaultSrc, this.#defaultAlt);
+  }
+
+  /**
+   * @param {string} src
+   * @param {string} alt
+   */
+  #showImage(src, alt) {
+    if (this.#uploadUrl) URL.revokeObjectURL(this.#uploadUrl);
+    this.#uploadUrl = src === this.#defaultSrc ? null : src;
+    this.#img.alt = alt;
+    this.#img.src = src;
+    // Corners clicked on the old image don't mean anything on the new one.
+    this.setCorners([]);
+    this.#events.calibrationChanged(true);
+  }
+
+  /**
    * Image pixels -> unit square. Points inside the calibrated quad land in 0..1.
    * @param {Point} p
    * @returns {Point | null}
@@ -131,8 +210,9 @@ export class CalibratedView {
     const ctx = this.#ctx;
     const canvas = this.#canvas;
     const img = this.#img;
-    if (!img.naturalWidth || !canvas.width) return;
     const scene = this.#getScene();
+    this.#updateCornerButtons(scene.mode === "calibrate");
+    if (!img.naturalWidth || !canvas.width) return;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -149,6 +229,28 @@ export class CalibratedView {
       if (scene.cursor) this.#drawCursor(scene.cursor);
     }
     this.#drawCalibration(scene.mode === "calibrate");
+  }
+
+  /** @param {Point} p */
+  #addCorner(p) {
+    if (this.#corners.length >= 4) return;
+    this.#corners.push(p);
+    this.#updateTransform();
+    this.#events.calibrationChanged(true);
+  }
+
+  /**
+   * Shows a corner button only while there are corners left to place and that
+   * image corner isn't already used.
+   * @param {boolean} calibrating
+   */
+  #updateCornerButtons(calibrating) {
+    const { naturalWidth: w, naturalHeight: h } = this.#img;
+    this.#cornerButtons.forEach((button, i) => {
+      const target = { x: IMAGE_CORNERS[i].x * w, y: IMAGE_CORNERS[i].y * h };
+      const used = this.#corners.some((c) => c.x === target.x && c.y === target.y);
+      button.hidden = !calibrating || !w || this.#corners.length >= 4 || used;
+    });
   }
 
   #updateTransform() {

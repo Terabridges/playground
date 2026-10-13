@@ -170,9 +170,41 @@ figure {
 
 figcaption {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
   font-weight: 600;
+}
+
+.image-actions {
+  display: flex;
+  gap: 6px;
+  font-weight: 400;
+}
+
+/* A file input styled like the other buttons. */
+.upload {
+  position: relative;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.upload:hover,
+.upload:focus-within {
+  border-color: var(--accent);
+}
+
+.upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
 }
 
 .status {
@@ -268,4 +300,63 @@ pre {
 
 .explainer p {
   max-width: 80ch;
+}
+
+/* Buttons in each image corner that place a calibration corner exactly there. */
+.corner-button {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.corner-button::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 0 solid #ffffff;
+}
+
+.corner-button:hover {
+  background: var(--accent);
+}
+
+.corner-button.top-left {
+  top: 0;
+  left: 0;
+}
+.corner-button.top-left::before {
+  border-top-width: 3px;
+  border-left-width: 3px;
+}
+
+.corner-button.top-right {
+  top: 0;
+  right: 0;
+}
+.corner-button.top-right::before {
+  border-top-width: 3px;
+  border-right-width: 3px;
+}
+
+.corner-button.bottom-right {
+  bottom: 0;
+  right: 0;
+}
+.corner-button.bottom-right::before {
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+}
+
+.corner-button.bottom-left {
+  bottom: 0;
+  left: 0;
+}
+.corner-button.bottom-left::before {
+  border-bottom-width: 3px;
+  border-left-width: 3px;
 }
