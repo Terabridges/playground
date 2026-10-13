@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perspective Playground</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Perspective Playground</h1>
+      <p>
+        Match up four corners of the field in a camera image and in a top-down map. A perspective transform can
+        then convert any point on the floor from one view to the other.
+      </p>
+    </header>
+
+    <div class="toolbar">
+      <div class="group" role="group" aria-label="Mode">
+        <button id="mode-calibrate" aria-pressed="true">1. Calibrate</button>
+        <button id="mode-draw" aria-pressed="false">2. Draw</button>
+      </div>
+      <div class="group" role="group" aria-label="Drawing tool">
+        <button id="tool-pen" aria-pressed="true">Pen</button>
+        <button id="tool-line" aria-pressed="false">Line</button>
+        <label class="color">Color <input id="color" type="color" value="#ffd60a" /></label>
+      </div>
+      <div class="group">
+        <label><input id="show-grid" type="checkbox" checked /> Grid</label>
+        <label>Tiles <input id="grid-divisions" type="number" min="1" max="48" value="6" /></label>
+      </div>
+      <div class="group">
+        <button id="undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+        <button id="clear">Clear drawings</button>
+        <button id="reset" class="danger">Reset calibration</button>
+      </div>
+    </div>
+
+    <p id="instructions" class="instructions" aria-live="polite"></p>
+
+    <main class="views">
+      <figure>
+        <figcaption>Camera view <span id="camera-status" class="status"></span></figcaption>
+        <div class="stage">
+          <img id="camera-image" src="assets/perspective.jpg" alt="The field seen from a camera at an angle" draggable="false" />
+          <canvas id="camera-canvas"></canvas>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>Top-down field <span id="field-status" class="status"></span></figcaption>
+        <div class="stage">
+          <img id="field-image" src="assets/biobuzz_top_down.png" alt="Top-down map of the field" draggable="false" />
+          <canvas id="field-canvas"></canvas>
+        </div>
+      </figure>
+    </main>
+
+    <section class="panels">
+      <div class="panel">
+        <h2>Under the pointer</h2>
+        <dl class="readout">
+          <dt>Camera pixel</dt>
+          <dd id="readout-camera">–</dd>
+          <dt>Unit square (u, v)</dt>
+          <dd id="readout-unit">–</dd>
+          <dt>Field position</dt>
+          <dd id="readout-field">–</dd>
+          <dt>Top-down pixel</dt>
+          <dd id="readout-topdown">–</dd>
+        </dl>
+        <label class="field-size">Field size (inches per side) <input id="field-size" type="number" min="1" value="144" /></label>
+      </div>
+      <div class="panel">
+        <h2>Camera → top-down matrix</h2>
+        <pre id="matrix"></pre>
+        <p class="hint">Multiply a camera pixel (x, y, 1) by this matrix, then divide by the last number, w.</p>
+      </div>
+    </section>
+
+    <details class="explainer">
+      <summary>How it works</summary>
+      <p>
+        The four corners you click on an image form a quadrilateral. <code>PerspectiveTransform.quadToSquare</code> builds a 3×3
+        matrix that maps that quadrilateral onto the <em>unit square</em>: corner 1 goes to (0, 0), corner 2 to (1, 0), corner 3 to
+        (1, 1) and corner 4 to (0, 1). Every drawing is saved in unit-square coordinates. To show it on an image, the page runs
+        that image's transform backwards (<code>inverseTransform</code>).
+      </p>
+      <p>
+        Multiplying a unit-square point by the field size gives a position on the field. If a robot camera sees a game piece on
+        the floor at some pixel, the same math gives the game piece's field position.
+      </p>
+      <p>
+        <strong>The catch:</strong> this only works for points on the floor plane. Try tracing the top of a tall object in the
+        camera view: it lands in the wrong spot on the top-down map, because a single photo can't tell you how high
+        something is.
+      </p>
+    </details>
+  </body>
+</html>

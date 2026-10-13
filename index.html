@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terabridges Playground</title>
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --text: #1b1f24;
+        --muted: #5b6573;
+        --border: #d9dee5;
+        --accent: #2f6fde;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111418;
+          --surface: #1a1f25;
+          --text: #e6e9ee;
+          --muted: #9aa4b1;
+          --border: #2d343d;
+          --accent: #5b8ff0;
+          color-scheme: dark;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 4px;
+      }
+      .lede {
+        margin: 0 0 24px;
+        color: var(--muted);
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        gap: 12px;
+      }
+      a {
+        display: block;
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: inherit;
+        text-decoration: none;
+      }
+      a:hover {
+        border-color: var(--accent);
+      }
+      a strong {
+        color: var(--accent);
+      }
+      a span {
+        display: block;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Terabridges Playground</h1>
+      <p class="lede">Small interactive demos for learning the ideas behind our robot code.</p>
+      <ul>
+        <li>
+          <a href="perspective-transform/">
+            <strong>Perspective Transform</strong>
+            <span>Map points between a camera view of the field and a top-down field map.</span>
+          </a>
+        </li>
+      </ul>
+    </main>
+  </body>
+</html>
