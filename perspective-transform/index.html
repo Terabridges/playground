@@ -33,6 +33,7 @@
       <div class="group">
         <button id="undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
         <button id="clear">Clear drawings</button>
+        <button id="saved-calibration" title="Go back to the robot's calibration">Saved calibration</button>
         <button id="reset" class="danger">Reset calibration</button>
       </div>
     </div>
@@ -49,7 +50,7 @@
           </span>
         </figcaption>
         <div class="stage">
-          <img id="camera-image" src="assets/perspective.jpg" alt="The field seen from a camera at an angle" draggable="false" />
+          <img id="camera-image" src="assets/calibrated_perspective.png" alt="The field seen from the robot's camera" draggable="false" />
           <canvas id="camera-canvas"></canvas>
         </div>
       </figure>

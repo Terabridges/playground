@@ -12,6 +12,26 @@ import { PerspectiveTransform } from "./perspective.js";
 const STORAGE_KEY = "perspective-playground";
 
 /**
+ * The robot's saved calibration: corners, in image pixels, for the camera and
+ * field images. Corner 1 is the same spot on the floor in both images.
+ * @type {[Point[], Point[]]}
+ */
+const DEFAULT_CORNERS = [
+  [
+    { x: 67, y: 990 },
+    { x: 65, y: 57 },
+    { x: 1332, y: 48 },
+    { x: 1319, y: 990 },
+  ],
+  [
+    { x: 3330, y: 3627 },
+    { x: 136, y: 2587 },
+    { x: 2431, y: 150 },
+    { x: 3602, y: 3337 },
+  ],
+];
+
+/**
  * @template {HTMLElement} [T=HTMLElement]
  * @param {string} id
  * @returns {T}
@@ -197,16 +217,18 @@ function save() {
 }
 
 function load() {
+  views.forEach((v, i) => v.setCorners(DEFAULT_CORNERS[i]));
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (!saved) return;
-    views.forEach((v, i) => v.setCorners(saved.corners?.[i] ?? []));
-    state.strokes = Array.isArray(saved.strokes) ? saved.strokes : [];
-    state.allCalibrated = views.every((v) => v.isCalibrated);
-    if (state.allCalibrated) setMode("draw");
+    if (saved) {
+      views.forEach((v, i) => v.setCorners(saved.corners?.[i] ?? []));
+      state.strokes = Array.isArray(saved.strokes) ? saved.strokes : [];
+    }
   } catch {
-    // Ignore missing or corrupt saved data and start fresh.
+    // Ignore missing or corrupt saved data and start from the defaults.
   }
+  state.allCalibrated = views.every((v) => v.isCalibrated);
+  if (state.allCalibrated) setMode("draw");
 }
 
 function undo() {
@@ -234,6 +256,16 @@ byId("clear").addEventListener("click", () => {
   state.strokes = [];
   save();
   update();
+});
+byId("saved-calibration").addEventListener("click", () => {
+  // The saved corners only fit the page's own images, so bring those back first.
+  views.forEach((v, i) => {
+    if (v.hasCustomImage) v.restoreImage();
+    v.setCorners(DEFAULT_CORNERS[i]);
+  });
+  state.allCalibrated = true;
+  save();
+  setMode("draw");
 });
 byId("reset").addEventListener("click", () => {
   views.forEach((v) => v.setCorners([]));
